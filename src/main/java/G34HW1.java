@@ -2,16 +2,19 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.types.FloatType;
 import org.apache.spark.storage.StorageLevel;
 import scala.Tuple2;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-public class WordCountExample{
+public class G34HW1{
 
+    public static final String inputFile = "input_20K.csv";
     public static void main(String[] args) throws IOException {
 
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -40,153 +43,60 @@ public class WordCountExample{
         int T = Integer.parseInt(args[1]);
 
         // Read input file and subdivide it into K random partitions
-        JavaRDD<String> docs = sc.textFile(args[2]).repartition(K).cache();
+        JavaRDD<String> rawData = sc.textFile(inputFile).repartition(K).cache();
 
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // SETTING GLOBAL VARIABLES
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-        long numdocs, numwords;
-        numdocs = docs.count();
-        System.out.println("Number of documents = " + numdocs);
-        JavaPairRDD<String, Long> count;
-        Random randomGenerator = new Random();
+
+        JavaPairRDD<String, Float> normalizedRating;
 
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
         // STANDARD WORD COUNT with reduceByKey
         // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-        count = docs
-                .flatMapToPair((document) -> {    // <-- MAP PHASE (R1)
-                    String[] tokens = document.split(" ");
-                    HashMap<String, Long> counts = new HashMap<>();
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
-                        counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
+        normalizedRating = rawData
+                .mapToPair((review) -> {    // <-- MAP PHASE (R1)
+                    String[] tokens = review.split(",");
+                    return new Tuple2<>(tokens[1],tokens[0]+","+tokens[2]);
                 })
-                .reduceByKey((x, y) -> x+y);    // <-- REDUCE PHASE (R1)
-        numwords = count.count();
-        System.out.println("Number of distinct words in the documents = " + numwords);
+                .groupByKey() // <-- REDUCE PHASE (R1)
+                .flatMapToPair( (element) -> {
+                    ArrayList<Tuple2<String, Float>> products = new ArrayList<>();
+                    float mean = 0;
+                    int counter=0;
+                    for (String s : element._2()){
+                        String[] list= s.split(",");
+                        Float rating =Float.parseFloat(list[1]);
+                        products.add(new Tuple2<>( list[0],rating ));
+                        mean+= rating;
+                        counter++;
+                    }
+                    mean/=counter;
+                    ArrayList<Tuple2<String, Float>> normProducts = new ArrayList<>();
+                    for (Tuple2<String, Float> t : products ){
+                        normProducts.add(new Tuple2<>( t._1 , t._2-mean));
+                    }
+                    return  normProducts.iterator();
+                });
+        JavaPairRDD<String, Float> maxNormRatings = normalizedRating.reduceByKey( (x, y) -> Math.max(x, y) );
 
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-        // IMPROVED WORD COUNT (keys in [0,K-1]) with groupByKey
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+                //.mapToPair( (element) ->  new Tuple2<>(element._2,element._1))
+        List<Tuple2<Float, String>> topList= maxNormRatings.mapToPair(x -> x.swap())
+                .sortByKey(false)
+                .take(T);
+        File f = new File(args[2]);
+        boolean fExists =f.createNewFile();
 
-        count = docs
-                .flatMapToPair((document) -> {    // <-- MAP PHASE (R1)
-                    String[] tokens = document.split(" ");
-                    HashMap<String, Long> counts = new HashMap<>();
-                    ArrayList<Tuple2<Integer, Tuple2<String, Long>>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
-                        counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(randomGenerator.nextInt(K), new Tuple2<>(e.getKey(), e.getValue())));
-                    }
-                    return pairs.iterator();
-                })
-                .groupByKey()    // <-- REDUCE PHASE (R1)
-                .flatMapToPair((element) -> {
-                    HashMap<String, Long> counts = new HashMap<>();
-                    for (Tuple2<String, Long> c : element._2()) {
-                        counts.put(c._1(), c._2() + counts.getOrDefault(c._1(), 0L));
-                    }
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
-                })
-                .reduceByKey((x, y) -> x+y); // <-- REDUCE PHASE (R2)
-        numwords = count.count();
-        System.out.println("Number of distinct words in the documents = " + numwords);
+        FileWriter fw = new FileWriter( args[2] );
 
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-        // IMPROVED WORD COUNT (keys in [0,K-1]) with groupBy
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        fw.write("INPUT PARAMETERS: K="+K+" T="+T+" file="+inputFile+"\n\nOUTPUT:\n" );
+        for(Tuple2<Float, String> t : topList ){
+            fw.write("Product "+t._2+" maxNormRating "+t._1+"\n");
+        }
+        fw.close();
 
-        count = docs
-                .flatMapToPair((document) -> {    // <-- MAP PHASE (R1)
-                    String[] tokens = document.split(" ");
-                    HashMap<String, Long> counts = new HashMap<>();
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
-                        counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
-                })
-                .groupBy((wordcountpair) -> randomGenerator.nextInt(K))
-                .flatMapToPair((element) -> {
-                    HashMap<String, Long> counts = new HashMap<>();
-                    for (Tuple2<String, Long> c : element._2()) {
-                        counts.put(c._1(), c._2() + counts.getOrDefault(c._1(), 0L));
-                    }
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
-                })
-                .reduceByKey((x, y) -> x+y); // <-- REDUCE PHASE (R2)
-        numwords = count.count();
-        System.out.println("Number of distinct words in the documents = " + numwords);
-
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-        // IMPROVED WORD COUNT with mapPartitions
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-        count = docs
-                .flatMapToPair((document) -> {    // <-- MAP PHASE (R1)
-                    String[] tokens = document.split(" ");
-                    HashMap<String, Long> counts = new HashMap<>();
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
-                        counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
-                })
-                .mapPartitionsToPair((element) -> {    // <-- REDUCE PHASE (R1)
-                    HashMap<String, Long> counts = new HashMap<>();
-                    while (element.hasNext()){
-                        Tuple2<String, Long> tuple = element.next();
-                        counts.put(tuple._1(), tuple._2() + counts.getOrDefault(tuple._1(), 0L));
-                    }
-                    ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
-                    return pairs.iterator();
-                })
-                .groupByKey()     // <-- REDUCE PHASE (R2)
-                .mapValues((it) -> {
-                    long sum = 0;
-                    for (long c : it) {
-                        sum += c;
-                    }
-                    return sum;
-                }); // Obs: one could use reduceByKey in place of groupByKey and mapValues
-        numwords = count.count();
-        System.out.println("Number of distinct words in the documents = " + numwords);
-
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-        // COMPUTE AVERAGE WORD LENGTH
-        // &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-        int avgwordlength = count
-                .map((tuple) -> tuple._1().length())
-                .reduce((x, y) -> x+y);
-        System.out.println("Average word length = " + avgwordlength/numwords);
 
     }
 
