@@ -4,7 +4,7 @@
     <option name="MAIN_CLASS_NAME" value="WordCountExample" />
     <module name="BDC.main" />
     <option name="PROGRAM_PARAMETERS" value="4 documents.txt" />
-    <option name="VM_PARAMETERS" value="-Dspark.master=&quot;locale[*]&quot;" />
+    <option name="VM_PARAMETERS" value="-Dspark.master=&quot;local[*]&quot;" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
