@@ -3,7 +3,7 @@
     <option name="ALTERNATIVE_JRE_PATH" value="/Library/Java/JavaVirtualMachines/jdk1.8.0_251.jdk/Contents/Home" />
     <option name="MAIN_CLASS_NAME" value="G34HW1" />
     <module name="BDC.main" />
-    <option name="PROGRAM_PARAMETERS" value="8 10 output.txt" />
+    <option name="PROGRAM_PARAMETERS" value="8 10 input_20K.csv" />
     <option name="VM_PARAMETERS" value="-Dspark.master=&quot;local[*]&quot;" />
     <method v="2">
       <option name="Make" enabled="true" />
