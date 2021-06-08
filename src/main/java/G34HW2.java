@@ -23,8 +23,7 @@ public class G34HW2 {
         }
         Vector point = Vectors.dense(data);
         Integer cluster = Integer.valueOf(tokens[tokens.length-1]);
-        Tuple2<Vector, Integer> pair = new Tuple2<>(point, cluster);
-        return pair;
+        return new Tuple2<>(point, cluster);
     }
 
     public static void main(String[] args) throws IOException {
