@@ -1,0 +1,89 @@
+cd C:\Users\mari8\OneDrive\Desktop\BDC\build\libs
+scp BDC-all.jar mariottoma@login.dei.unipd.it:.
+ssh mariottoma@login.dei.unipd.it
+scp -P 2222 BDC-all.jar group34@147.162.226.106:.
+ssh group34@147.162.226.106
+
+spark-submit --num-executors X  --class G34HW3 BDC-all.jar argument-list
+
+
+username: mariottoma@dei.unipd.it
+username: mariottoma@login.dei.unipd.it (SSH da remoto)
+passwd: 
+
+
+
+2M DATASET
+
+Time for input reading = 9890
+
+Number of clusters k = 8
+Silhouette coefficient = 0.8800173750723036
+Time for clustering = 6894
+Time for silhouette computation = 5897
+
+Number of clusters k = 9
+Silhouette coefficient = 0.9952342088476699
+Time for clustering = 1788
+Time for silhouette computation = 5236
+
+Number of clusters k = 10
+Silhouette coefficient = 0.9663260728760611
+Time for clustering = 4371
+Time for silhouette computation = 5267
+
+Number of clusters k = 10
+Silhouette coefficient = 0.9663260728760611
+Time for clustering = 4371
+Time for silhouette computation = 5267
+
+Number of clusters k = 11
+Silhouette coefficient = 0.9354612771554262
+Time for clustering = 3727
+Time for silhouette computation = 5922
+
+Number of clusters k = 12
+Silhouette coefficient = 0.8858297949156936
+Time for clustering = 3627
+Time for silhouette computation = 5770
+
+
+HIGGS
+16 executors
+Time for input reading = 51692 
+
+Number of clusters k = 5
+Silhouette coefficient = 0.3166782031812243
+Time for clustering = 11479
+Time for silhouette computation = 11041
+
+**************************************************
+8 executors
+Time for input reading = 54921
+
+Number of clusters k = 5
+Silhouette coefficient = 0.44444273470119455
+Time for clustering = 24616
+Time for silhouette computation = 20755
+
+**************************************************
+4 executors
+Time for input reading = 55572
+
+Number of clusters k = 5
+Silhouette coefficient = 0.38866798226754057
+Time for clustering = 45173
+Time for silhouette computation = 37129
+
+**************************************************
+2 executors
+Time for input reading = 62657
+
+Number of clusters k = 5
+Silhouette coefficient = 0.35884864215791
+Time for clustering = 62842
+Time for silhouette computation = 85708
+
+
+
+
