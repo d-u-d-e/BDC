@@ -117,8 +117,8 @@ public class G34HW3 {
 
 
         //Set up Spark configuration
-        SparkConf conf = new SparkConf(true).setAppName("Homework3");
-                //.set("spark.locality.wait", "0s");
+        SparkConf conf = new SparkConf(true).setAppName("Homework3")
+                .set("spark.locality.wait", "0s");
         JavaSparkContext sc = new JavaSparkContext(conf);
         sc.setLogLevel("WARN");
 
@@ -133,7 +133,7 @@ public class G34HW3 {
 
         System.out.println("Time for input reading = " + readingTime + "\n");
 
-        for(int k = kstart; k < kstart + h - 1; k++){
+        for(int k = kstart; k <= kstart + h - 1; k++){
 
             long startClustering = System.currentTimeMillis();
             KMeansModel model = KMeans.train(inputPoints.rdd(), k, iter);
